@@ -40,5 +40,5 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
       - name: Set status badge
-        if: always
-        run: echo "Bot execution completed with status: ${{ job.status }}"
+        if: always()
+        run: echo "Bot execution completed with status ${{ job.status }}"
