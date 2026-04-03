@@ -3,10 +3,12 @@
 import logging
 import sys
 from typing import Optional
+from dotenv import load_dotenv
 
 from src.scraper import NewsScraper
 from src.telegram_bot import TelegramBot
 
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -36,9 +38,9 @@ def main() -> int:
         with NewsScraper() as scraper:
             articles = scraper.get_all_news()
 
-        if not articles:
-            logger.warning("No articles found")
-            return 1
+        # if not articles:
+        #     logger.warning("No articles found")
+        #     return 1
 
         logger.info(f"Fetched {len(articles)} articles")
 

@@ -68,7 +68,7 @@ class TelegramBot:
             print(f"Error sending Telegram message: {e}")
             return False
 
-    def format_news_brief(self, articles: list[NewsArticle], max_articles: int = 5) -> str:
+    def format_news_brief(self, articles: list[NewsArticle], max_articles: int = 10) -> str:
         """
         Format a list of articles into a Telegram-friendly message.
 
@@ -81,13 +81,12 @@ class TelegramBot:
         """
         if not articles:
             return (
-                "<b>Sports Tech News Brief</b>\n\n"
                 "No news articles found for today."
             )
 
         limited_articles = articles[:max_articles]
 
-        message = "<b>🏆 Sports Tech News Brief</b>\n\n"
+        message = ""
 
         for idx, article in enumerate(limited_articles, 1):
             message += f"<b>{idx}. {article.title}</b>\n"
