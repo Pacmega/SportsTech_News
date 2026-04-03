@@ -3,7 +3,7 @@ name: Daily Sports Tech News Brief
 on:
   schedule:
     # Run every day at 9:00 AM UTC (adjust to your preference)
-    - cron: "0 9 * * *"
+    - cron: "0 10 * * *"
   
   # Allow manual trigger
   workflow_dispatch:
@@ -18,15 +18,15 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v5
         with:
           version: "latest"
 
