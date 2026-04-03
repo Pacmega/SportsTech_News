@@ -1,0 +1,44 @@
+name: Daily Sports Tech News Brief
+
+on:
+  schedule:
+    # Run every day at 9:00 AM UTC (adjust to your preference)
+    - cron: "0 9 * * *"
+  
+  # Allow manual trigger
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  send-news-brief:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Sync dependencies
+        run: uv sync
+
+      - name: Run news bot
+        run: uv run python -m src.main
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: Set status badge
+        if: always()
+        run: echo "Bot execution completed with status: ${{ job.status }}"
