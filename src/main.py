@@ -2,11 +2,12 @@
 
 import logging
 import sys
-from typing import Optional
+
 from dotenv import load_dotenv
 
-from src.scraper import NewsScraper
+from src.scraper import NewsArticle, NewsScraper
 from src.telegram_bot import TelegramBot
+from src.web_scraper import WebScraper
 
 load_dotenv()
 
@@ -35,12 +36,19 @@ def main() -> int:
 
         # Step 1: Fetch news
         logger.info("Fetching news from sources...")
-        with NewsScraper() as scraper:
-            articles = scraper.get_all_news()
+        with NewsScraper() as rss_scraper:
+            rss_articles = rss_scraper.get_all_news()
 
-        # if not articles:
-        #     logger.warning("No articles found")
-        #     return 1
+        with WebScraper() as web_scraper:
+            web_articles = web_scraper.get_all_news()
+
+        seen_urls: set[str] = set()
+        articles: list[NewsArticle] = []
+        for article in rss_articles + web_articles:
+            if article.url not in seen_urls:
+                seen_urls.add(article.url)
+                articles.append(article)
+        articles.sort(key=lambda x: x.published_at or "", reverse=True)
 
         logger.info(f"Fetched {len(articles)} articles")
 

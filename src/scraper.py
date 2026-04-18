@@ -148,7 +148,8 @@ class NewsScraper:
                 # Apply per-source filters
                 filters = self.FEED_FILTERS.get(source_name, {})
                 author = entry.get("author", "")
-                if any(kw.lower() in title.lower() for kw in filters.get("exclude_title_keywords", [])):
+                excluded_keywords = filters.get("exclude_title_keywords", [])
+                if any(kw.lower() in title.lower() for kw in excluded_keywords):
                     continue
                 if any(exc.lower() == author.lower() for exc in filters.get("exclude_authors", [])):
                     continue
