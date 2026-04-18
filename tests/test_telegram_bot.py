@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 
 from src.scraper import NewsArticle
@@ -85,3 +86,26 @@ class TestTelegramBot:
         """Test bot works as context manager."""
         with TelegramBot(bot_token="test", chat_id="test") as bot:
             assert bot.client is not None
+
+    def test_send_message_success(self):
+        bot = TelegramBot(bot_token="token", chat_id="chat")
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        bot.client.post = MagicMock(return_value=mock_resp)
+        assert bot.send_message("hello") is True
+        bot.client.close()
+
+    def test_send_message_request_error_returns_false(self):
+        bot = TelegramBot(bot_token="token", chat_id="chat")
+        bot.client.post = MagicMock(side_effect=httpx.RequestError("conn failed"))
+        assert bot.send_message("hello") is False
+        bot.client.close()
+
+    def test_send_news_brief_delegates_to_send_message(self):
+        bot = TelegramBot(bot_token="token", chat_id="chat")
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        bot.client.post = MagicMock(return_value=mock_resp)
+        articles = [NewsArticle(title="T", url="https://x.com", source="S")]
+        assert bot.send_news_brief(articles) is True
+        bot.client.close()

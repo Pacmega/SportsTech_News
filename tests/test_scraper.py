@@ -1,9 +1,10 @@
 """Unit tests for the scraper module."""
 
 from datetime import datetime, timedelta, timezone
+from email.utils import format_datetime
 from unittest.mock import MagicMock, patch
 
-import pytest
+import httpx
 
 from src.scraper import NewsArticle, NewsScraper
 
@@ -109,5 +110,127 @@ class TestNewsScraper:
         assert isinstance(articles, list)
         # Don't assert length since it depends on actual feed
         assert all(isinstance(a, NewsArticle) for a in articles)
+        scraper.client.close()
+
+    def test_feed_filters_configured_for_irunfar(self):
+        scraper = NewsScraper()
+        assert "iRunFar" in scraper.FEED_FILTERS
+        assert "Review" in scraper.FEED_FILTERS["iRunFar"]["exclude_title_keywords"]
+        assert "Sponsored Post" in scraper.FEED_FILTERS["iRunFar"]["exclude_authors"]
+        scraper.client.close()
+
+
+class TestTimeFromRfc822:
+    def test_valid_rfc822_returns_utc_datetime(self):
+        scraper = NewsScraper()
+        result = scraper._time_from_rfc822("Mon, 01 Jan 2024 10:00:00 +0000")
+        assert result is not None
+        assert result.tzinfo is not None
+        scraper.client.close()
+
+    def test_naive_datetime_gets_utc_assigned(self):
+        """Covers the naive dt.replace(tzinfo=utc) branch."""
+        scraper = NewsScraper()
+        naive_dt = datetime(2024, 1, 1, 10, 0, 0)
+        with patch("src.scraper.parsedate_to_datetime", return_value=naive_dt):
+            result = scraper._time_from_rfc822("anything")
+        assert result is not None
+        assert result.tzinfo == timezone.utc
+        scraper.client.close()
+
+    def test_invalid_string_returns_none(self):
+        """Covers the exception fallback path."""
+        scraper = NewsScraper()
+        assert scraper._time_from_rfc822("not-a-date") is None
+        scraper.client.close()
+
+
+class TestFetchFromRss:
+    def _make_entry(self, title, url, published=None, updated=None, summary="", author=""):
+        attrs = {"title": title, "link": url, "summary": summary, "author": author}
+        entry = MagicMock()
+        entry.get = lambda k, d=None: attrs.get(k, d)
+        if published is not None:
+            entry.published = published
+        else:
+            del entry.published
+        if updated is not None:
+            entry.updated = updated
+        else:
+            del entry.updated
+        return entry
+
+    def _mock_feed(self, scraper, entries, bozo=False):
+        mock_resp = MagicMock()
+        mock_resp.text = ""
+        scraper.client.get = MagicMock(return_value=mock_resp)
+        feed = MagicMock()
+        feed.bozo = bozo
+        feed.bozo_exception = Exception("parse error") if bozo else None
+        feed.entries = entries
+        return feed
+
+    def _recent(self):
+        return format_datetime(datetime.now(timezone.utc) - timedelta(hours=1))
+
+    def test_bozo_feed_logs_warning_and_still_processes(self):
+        scraper = NewsScraper()
+        entry = self._make_entry("Article", "https://x.com", published=self._recent())
+        feed = self._mock_feed(scraper, [entry], bozo=True)
+        with patch("src.scraper.feedparser.parse", return_value=feed):
+            articles = scraper.fetch_from_rss("http://x.com/feed", "Test")
+        assert len(articles) == 1
+        scraper.client.close()
+
+    def test_uses_updated_when_published_absent(self):
+        scraper = NewsScraper()
+        entry = self._make_entry("Article", "https://x.com", updated=self._recent())
+        feed = self._mock_feed(scraper, [entry])
+        with patch("src.scraper.feedparser.parse", return_value=feed):
+            articles = scraper.fetch_from_rss("http://x.com/feed", "Test")
+        assert len(articles) == 1
+        scraper.client.close()
+
+    def test_excludes_article_matching_title_keyword_filter(self):
+        scraper = NewsScraper()
+        entry = self._make_entry("Garmin Watch Review", "https://x.com", published=self._recent())
+        feed = self._mock_feed(scraper, [entry])
+        with patch("src.scraper.feedparser.parse", return_value=feed):
+            articles = scraper.fetch_from_rss("http://x.com/feed", "iRunFar")
+        assert articles == []
+        scraper.client.close()
+
+    def test_excludes_article_matching_author_filter(self):
+        scraper = NewsScraper()
+        entry = self._make_entry(
+            "Race Report", "https://x.com", published=self._recent(), author="Sponsored Post"
+        )
+        feed = self._mock_feed(scraper, [entry])
+        with patch("src.scraper.feedparser.parse", return_value=feed):
+            articles = scraper.fetch_from_rss("http://x.com/feed", "iRunFar")
+        assert articles == []
+        scraper.client.close()
+
+    def test_strips_html_from_summary(self):
+        scraper = NewsScraper()
+        entry = self._make_entry(
+            "Article", "https://x.com", published=self._recent(), summary="<p>Bold <b>text</b></p>"
+        )
+        feed = self._mock_feed(scraper, [entry])
+        with patch("src.scraper.feedparser.parse", return_value=feed):
+            articles = scraper.fetch_from_rss("http://x.com/feed", "Test")
+        assert articles[0].summary == "Bold text"
+        scraper.client.close()
+
+    def test_request_error_returns_empty_list(self):
+        scraper = NewsScraper()
+        scraper.client.get = MagicMock(side_effect=httpx.RequestError("conn failed"))
+        assert scraper.fetch_from_rss("http://x.com/feed", "Test") == []
+        scraper.client.close()
+
+    def test_unexpected_error_returns_empty_list(self):
+        scraper = NewsScraper()
+        scraper.client.get = MagicMock(side_effect=ValueError("unexpected"))
+        assert scraper.fetch_from_rss("http://x.com/feed", "Test") == []
         scraper.client.close()
 
