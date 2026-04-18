@@ -30,8 +30,15 @@ class NewsScraper:
     # Dictionary of RSS feeds to monitor
     RSS_FEEDS = {
         "DC Rainmaker": "https://www.dcrainmaker.com/feed",
-        # Add more feeds as needed:
-        # "Another Source": "https://example.com/feed",
+        "iRunFar": "https://www.irunfar.com/feed",
+    }
+
+    # Per-source filters: articles matching any keyword (title) or author are skipped
+    FEED_FILTERS: dict[str, dict[str, list[str]]] = {
+        "iRunFar": {
+            "exclude_title_keywords": ["Review"],
+            "exclude_authors": ["Sponsored Post"],
+        },
     }
 
     # Filter articles published within the last N hours
@@ -137,6 +144,14 @@ class NewsScraper:
                 title = entry.get("title", "No title")
                 url = entry.get("link", "")
                 summary = entry.get("summary", "")
+
+                # Apply per-source filters
+                filters = self.FEED_FILTERS.get(source_name, {})
+                author = entry.get("author", "")
+                if any(kw.lower() in title.lower() for kw in filters.get("exclude_title_keywords", [])):
+                    continue
+                if any(exc.lower() == author.lower() for exc in filters.get("exclude_authors", [])):
+                    continue
 
                 # Clean up HTML from summary if present
                 if summary:
