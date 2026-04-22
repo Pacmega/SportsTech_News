@@ -211,6 +211,23 @@ class TestFetchFromRss:
         assert articles == []
         scraper.client.close()
 
+    def test_irunfar_summary_keeps_only_middle_sentence(self):
+        title = "The 200-Mile Phenomenon: A Data-Based Look at Their Growth and Demographics"
+        raw_summary = (
+            f"The post {title} appeared first on iRunFar.\n"
+            "A look at demographics and growth data from North America's top 200-plus-mile races.\n"
+            f"{title} by Zander Chase."
+        )
+        scraper = NewsScraper()
+        entry = self._make_entry(title, "https://x.com", published=self._recent(), summary=raw_summary)
+        feed = self._mock_feed(scraper, [entry])
+        with patch("src.scraper.feedparser.parse", return_value=feed):
+            articles = scraper.fetch_from_rss("http://x.com/feed", "iRunFar")
+        assert articles[0].summary == (
+            "A look at demographics and growth data from North America's top 200-plus-mile races."
+        )
+        scraper.client.close()
+
     def test_strips_html_from_summary(self):
         scraper = NewsScraper()
         entry = self._make_entry(

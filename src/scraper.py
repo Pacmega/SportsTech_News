@@ -104,6 +104,14 @@ class NewsScraper:
 
         return published_datetime >= lookback_threshold
 
+    def _clean_irunfar_summary(self, summary: str, title: str) -> str:
+        lines = [line.strip() for line in summary.split("\n") if line.strip()]
+        cleaned = [
+            l for l in lines
+            if "appeared first on iRunFar" not in l and not l.startswith(title)
+        ]
+        return " ".join(cleaned).strip() or summary
+
     def fetch_from_rss(self, feed_url: str, source_name: str) -> list[NewsArticle]:
         """
         Fetch articles from an RSS feed.
@@ -159,6 +167,10 @@ class NewsScraper:
                     # Simple cleanup: remove common HTML tags
                     summary = re.sub(r"<[^>]+>", "", summary)
                     summary = summary.strip()
+
+                # Apply source-specific summary transformations
+                if source_name == "iRunFar" and summary:
+                    summary = self._clean_irunfar_summary(summary, title)
 
                 published_at = published_dt.isoformat() if published_dt else None
 
