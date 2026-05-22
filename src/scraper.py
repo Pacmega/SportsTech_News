@@ -31,13 +31,20 @@ class NewsScraper:
     RSS_FEEDS = {
         "DC Rainmaker": "https://www.dcrainmaker.com/feed",
         "iRunFar": "https://www.irunfar.com/feed",
+        "SlowTwitch": "https://slowtwitch.com/feed/",
     }
 
-    # Per-source filters: articles matching any keyword (title) or author are skipped
+    # Per-source filters: articles matching any keyword (title) or author are skipped.
+    # include_categories: article must have at least one matching tag/category term (allowlist).
+    # exclude_tags: article is skipped if it has any matching tag/category term.
     FEED_FILTERS: dict[str, dict[str, list[str]]] = {
         "iRunFar": {
             "exclude_title_keywords": ["Review"],
             "exclude_authors": ["Sponsored Post"],
+        },
+        "SlowTwitch": {
+            "include_categories": ["Running", "Featured"],
+            "exclude_tags": ["Run Shoes"],
         },
     }
 
@@ -156,10 +163,22 @@ class NewsScraper:
                 # Apply per-source filters
                 filters = self.FEED_FILTERS.get(source_name, {})
                 author = entry.get("author", "")
+                entry_tags = [t.term for t in entry.get("tags", [])]
+
                 excluded_keywords = filters.get("exclude_title_keywords", [])
                 if any(kw.lower() in title.lower() for kw in excluded_keywords):
                     continue
                 if any(exc.lower() == author.lower() for exc in filters.get("exclude_authors", [])):
+                    continue
+
+                include_categories = filters.get("include_categories", [])
+                if include_categories and not any(
+                    cat.lower() in [t.lower() for t in entry_tags] for cat in include_categories
+                ):
+                    continue
+
+                exclude_tags = filters.get("exclude_tags", [])
+                if any(tag.lower() in [t.lower() for t in entry_tags] for tag in exclude_tags):
                     continue
 
                 # Clean up HTML from summary if present
