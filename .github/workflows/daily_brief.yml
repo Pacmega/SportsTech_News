@@ -2,8 +2,8 @@ name: Daily Sports Tech News Brief
 
 on:
   schedule:
-    # Run every day at 9:00 AM UTC (adjust to your preference)
-    - cron: "0 10 * * *"
+    # Run every day at 09:00 CET, 10:00 AM CEST (adjust to your preference)
+    - cron: "0 8 * * *"
   
   # Allow manual trigger
   workflow_dispatch:
