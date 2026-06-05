@@ -119,6 +119,10 @@ class NewsScraper:
         ]
         return " ".join(cleaned).strip() or summary
 
+    def _truncate_to_first_sentence(self, summary: str) -> str:
+        match = re.search(r"\.\s+(?=[A-Z])", summary)
+        return summary[: match.end()].strip() if match else summary
+
     def fetch_from_rss(self, feed_url: str, source_name: str) -> list[NewsArticle]:
         """
         Fetch articles from an RSS feed.
@@ -189,6 +193,8 @@ class NewsScraper:
 
                 if summary:
                     summary = self._clean_summary_boilerplate(summary, title)
+                if summary and source_name == "DC Rainmaker":
+                    summary = self._truncate_to_first_sentence(summary)
 
                 published_at = published_dt.isoformat() if published_dt else None
 

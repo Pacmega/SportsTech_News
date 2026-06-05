@@ -246,6 +246,36 @@ class TestFetchFromRss:
         assert articles[0].summary == "A comprehensive guide to the top running shoes this year."
         scraper.client.close()
 
+    def test_dcrainmaker_summary_truncated_to_first_sentence(self):
+        title = "Garmin Forerunner 965 In-Depth Review"
+        raw_summary = (
+            "Garmin has announced the Forerunner 965. It comes in two sizes. "
+            "Read More Here --> https://www.dcrainmaker.com/2026/01/garmin-forerunner-965-review.html"
+        )
+        scraper = NewsScraper()
+        entry = self._make_entry(title, "https://x.com", published=self._recent(), summary=raw_summary)
+        feed = self._mock_feed(scraper, [entry])
+        with patch("src.scraper.feedparser.parse", return_value=feed):
+            articles = scraper.fetch_from_rss("http://x.com/feed", "DC Rainmaker")
+        assert articles[0].summary == "Garmin has announced the Forerunner 965."
+        scraper.client.close()
+
+    def test_dcrainmaker_summary_not_truncated_on_abbreviation(self):
+        title = "Polar Pacer Pro In-Depth Review"
+        raw_summary = (
+            "Polar's new Pacer Pro weighs approx. 45 grams and targets serious runners. "
+            "Read More Here --> https://www.dcrainmaker.com/2026/01/polar-pacer-pro-review.html"
+        )
+        scraper = NewsScraper()
+        entry = self._make_entry(title, "https://x.com", published=self._recent(), summary=raw_summary)
+        feed = self._mock_feed(scraper, [entry])
+        with patch("src.scraper.feedparser.parse", return_value=feed):
+            articles = scraper.fetch_from_rss("http://x.com/feed", "DC Rainmaker")
+        assert articles[0].summary == (
+            "Polar's new Pacer Pro weighs approx. 45 grams and targets serious runners."
+        )
+        scraper.client.close()
+
     def test_strips_html_from_summary(self):
         scraper = NewsScraper()
         entry = self._make_entry(
