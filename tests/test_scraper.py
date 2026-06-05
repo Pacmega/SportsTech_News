@@ -146,8 +146,9 @@ class TestTimeFromRfc822:
 
 
 class TestFetchFromRss:
-    def _make_entry(self, title, url, published=None, updated=None, summary="", author=""):
-        attrs = {"title": title, "link": url, "summary": summary, "author": author}
+    def _make_entry(self, title, url, published=None, updated=None, summary="", author="", tags=None):
+        tag_objects = [MagicMock(term=t) for t in (tags or [])]
+        attrs = {"title": title, "link": url, "summary": summary, "author": author, "tags": tag_objects}
         entry = MagicMock()
         entry.get = lambda k, d=None: attrs.get(k, d)
         if published is not None:
@@ -226,6 +227,23 @@ class TestFetchFromRss:
         assert articles[0].summary == (
             "A look at demographics and growth data from North America's top 200-plus-mile races."
         )
+        scraper.client.close()
+
+    def test_slowtwitch_summary_strips_boilerplate(self):
+        title = "Best Running Shoes of 2026"
+        raw_summary = (
+            f"The post {title} first appeared on SlowTwitch News.\n"
+            "A comprehensive guide to the top running shoes this year.\n"
+            f"{title} by Jane Doe."
+        )
+        scraper = NewsScraper()
+        entry = self._make_entry(
+            title, "https://x.com", published=self._recent(), summary=raw_summary, tags=["Running"]
+        )
+        feed = self._mock_feed(scraper, [entry])
+        with patch("src.scraper.feedparser.parse", return_value=feed):
+            articles = scraper.fetch_from_rss("http://x.com/feed", "SlowTwitch")
+        assert articles[0].summary == "A comprehensive guide to the top running shoes this year."
         scraper.client.close()
 
     def test_strips_html_from_summary(self):

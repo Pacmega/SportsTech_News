@@ -111,11 +111,11 @@ class NewsScraper:
 
         return published_datetime >= lookback_threshold
 
-    def _clean_irunfar_summary(self, summary: str, title: str) -> str:
+    def _clean_summary_boilerplate(self, summary: str, title: str) -> str:
         lines = [line.strip() for line in summary.split("\n") if line.strip()]
         cleaned = [
             l for l in lines
-            if "appeared first on iRunFar" not in l and not l.startswith(title)
+            if "appeared first on" not in l and "first appeared on" not in l and not l.startswith(title)
         ]
         return " ".join(cleaned).strip() or summary
 
@@ -187,9 +187,8 @@ class NewsScraper:
                     summary = re.sub(r"<[^>]+>", "", summary)
                     summary = summary.strip()
 
-                # Apply source-specific summary transformations
-                if source_name == "iRunFar" and summary:
-                    summary = self._clean_irunfar_summary(summary, title)
+                if summary:
+                    summary = self._clean_summary_boilerplate(summary, title)
 
                 published_at = published_dt.isoformat() if published_dt else None
 
