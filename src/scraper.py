@@ -115,7 +115,7 @@ class NewsScraper:
         lines = [line.strip() for line in summary.split("\n") if line.strip()]
         cleaned = [
             l for l in lines
-            if "appeared first on" not in l and "first appeared on" not in l and not l.startswith(title)
+            if "appeared first on" not in l and "first appeared on" not in l and title not in l
         ]
         return " ".join(cleaned).strip() or summary
 

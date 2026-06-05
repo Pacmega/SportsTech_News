@@ -229,6 +229,22 @@ class TestFetchFromRss:
         )
         scraper.client.close()
 
+    def test_irunfar_summary_filters_title_mid_sentence(self):
+        title = "The 200-Mile Phenomenon: A Data-Based Look at Their Growth and Demographics"
+        raw_summary = (
+            "A look at demographics and growth data from North America's top 200-plus-mile races.\n"
+            f"Read more about {title} on iRunFar."
+        )
+        scraper = NewsScraper()
+        entry = self._make_entry(title, "https://x.com", published=self._recent(), summary=raw_summary)
+        feed = self._mock_feed(scraper, [entry])
+        with patch("src.scraper.feedparser.parse", return_value=feed):
+            articles = scraper.fetch_from_rss("http://x.com/feed", "iRunFar")
+        assert articles[0].summary == (
+            "A look at demographics and growth data from North America's top 200-plus-mile races."
+        )
+        scraper.client.close()
+
     def test_slowtwitch_summary_strips_boilerplate(self):
         title = "Best Running Shoes of 2026"
         raw_summary = (
